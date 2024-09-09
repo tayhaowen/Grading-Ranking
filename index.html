@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SAF Personnel Ranking System</title>
+    <link rel="stylesheet" href="Style/styles.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js"></script>
+</head>
+<body>
+    <div id="ranking-system">
+        <h1>Ranking Grader</h1>
+        
+        <div id="file-upload">
+            <button id="upload-btn">Upload Nominal Roll</button>
+            <input type="file" id="excel-upload" accept=".xlsx, .xls" style="display: none;">
+        </div>
+
+        <div id="rank-toggles">
+            <!-- Rank toggle buttons will be dynamically added here -->
+        </div>
+
+        <div id="main-container">
+            <!-- Tier and personnel tiles will be dynamically added here -->
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.16.9/xlsx.full.min.js"></script>
+    <script src="Script/script.js"></script>
+</body>
+</html>
