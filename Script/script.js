@@ -36,6 +36,7 @@ $(document).ready(function() {
         }
     });
 
+    
     function displayPersonnel() {
         const mainContainer = $('#main-container');
         personnel.forEach((person, index) => {
@@ -43,65 +44,80 @@ $(document).ready(function() {
         });
         initializeDragAndDrop();
     }
-
+    
     function createPersonnelTile(person) {
+        function getProperty(obj, key) {
+            const fuzzyKey = Object.keys(obj).find(k => fuzzyMatch(k, key));
+            return obj[fuzzyKey] || 'N/A';
+        }
+    
         return $(`
-            <div class="personnel-tile" data-index="${personnel.indexOf(person)}">
-                <h4>${person['RANK']} ${person['COMPLETE NAME']}</h4>
-                <div class="info-grid">
-                    <div class="info-item"><strong>Sub-unit:</strong> ${person['SUBUNIT-1'] || 'N/A'}</div>
-                    <div class="info-item"><strong>Vocation:</strong> ${person['VOC'] || 'N/A'}</div>
-                    <div class="info-item"><strong>Years in Rank:</strong> ${person['YIR caa 1 Jul 25'] || 'N/A'}</div>
-                    <div class="info-item"><strong>Promo Count:</strong> ${person['PROMO COUNT'] || 'N/A'}</div>
-                    <div class="info-item"><strong>IPPT:</strong> ${person['IPPT AWARD'] || 'N/A'}</div>
-                    <div class="info-item"><strong>BMI:</strong> ${person['BMI'] || 'N/A'}</div>
-                    <div class="info-item"><strong>Marksman:</strong> ${person['Marksman'] || 'N/A'}</div>
-                    <div class="info-item"><strong>Offence:</strong> ${person['Offence'] || 'N/A'}</div>
-                </div>
-                <div class="performance-indicators">
-                    <div class="indicator">
-                        <div class="indicator-value">${person['PRG 23'] || '-'}</div>
-                        <div>PRG23</div>
-                    </div>
-                    <div class="indicator">
-                        <div class="indicator-value">${person['CEP 23'] || '-'}</div>
-                        <div>CEP23</div>
-                    </div>
-                    <div class="indicator">
-                        <div class="indicator-value">${person['PRG 24'] || '-'}</div>
-                        <div>PRG24</div>
-                    </div>
-                    <div class="indicator">
-                        <div class="indicator-value">${person['CEP 24'] || '-'}</div>
-                        <div>CEP24</div>
-                    </div>
-                </div>
-            </div>
+        <div class="personnel-tile" data-index="${personnel.indexOf(person)}">
+        <h4>${getProperty(person, 'RANK')} ${getProperty(person, 'NAME')}</h4>
+        <div class="info-grid">
+        <div class="info-item"><strong>Sub-unit:</strong> ${getProperty(person, 'SUBUNIT')}</div>
+        <div class="info-item"><strong>Vocation:</strong> ${getProperty(person, 'VOC')}</div>
+        <div class="info-item"><strong>Years in Rank:</strong> ${getProperty(person, 'YIR')}</div>
+        <div class="info-item"><strong>Promo Count:</strong> ${getProperty(person, 'PROMO COUNT')}</div>
+        <div class="info-item"><strong>IPPT:</strong> ${getProperty(person, 'IPPT AWARD')}</div>
+        <div class="info-item"><strong>BMI:</strong> ${getProperty(person, 'BMI')}</div>
+        <div class="info-item"><strong>Marksman:</strong> ${getProperty(person, 'Marksman')}</div>
+        <div class="info-item"><strong>Offence:</strong> ${getProperty(person, 'Offence')}</div>
+        </div>
+        <div class="performance-indicators">
+        <div class="indicator">
+        <div class="indicator-value">${getProperty(person, 'PRG 23')}</div>
+        <div>PRG23</div>
+        </div>
+        <div class="indicator">
+        <div class="indicator-value">${getProperty(person, 'CEP 23')}</div>
+        <div>CEP23</div>
+        </div>
+        <div class="indicator">
+        <div class="indicator-value">${getProperty(person, 'PRG 24')}</div>
+        <div>PRG24</div>
+        </div>
+        <div class="indicator">
+        <div class="indicator-value">${getProperty(person, 'CEP 24')}</div>
+        <div>CEP24</div>
+        </div>
+        </div>
+        </div>
         `);
     }
 
     function initializeRankToggles() {
-        const ranks = [...new Set(personnel.map(p => p['RANK AS']))];
+        const ranks = [...new Set(personnel.map(p => getProperty(p, 'RANK AS')))];
         const toggles = $('#rank-toggles');
         toggles.empty();
         ranks.forEach(rank => {
             toggles.append(`<button class="rank-toggle" data-rank="${rank}">${rank}</button>`);
         });
-
+    
         $('.rank-toggle').click(function() {
             $(this).toggleClass('active');
             filterPersonnel();
         });
     }
 
+    function fuzzyMatch(str, pattern) {
+        const regex = new RegExp(pattern.split('').join('.*'), 'i');
+        return regex.test(str);
+    }
+    
+    function getProperty(obj, key) {
+        const fuzzyKey = Object.keys(obj).find(k => fuzzyMatch(k, key));
+        return obj[fuzzyKey] || 'N/A';
+    }
+
     function filterPersonnel() {
         const activeRanks = $('.rank-toggle.active').map(function() {
             return $(this).data('rank');
         }).get();
-
+    
         $('.personnel-tile').each(function() {
             const index = $(this).data('index');
-            $(this).toggle(activeRanks.length === 0 || activeRanks.includes(personnel[index]['RANK AS']));
+            $(this).toggle(activeRanks.length === 0 || activeRanks.includes(getProperty(personnel[index], 'RANK AS')));
         });
     }
 
@@ -266,6 +282,8 @@ $(document).ready(function() {
         `;
         return tierTile;
     }
+
+    
 
     initializeTiers();
     initializeDragAndDrop();
