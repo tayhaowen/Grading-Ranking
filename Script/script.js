@@ -13,6 +13,13 @@ $(document).ready(function() {
                 </div>
             `);
         });
+        // Add ungraded container with a unique ID
+        mainContainer.append(`
+            <div id="ungraded-container">
+                <h3>Not Graded Yet</h3>
+                <div id="ungraded-tiles"></div>
+            </div>
+        `);
     }
 
     $('#upload-btn').click(function() {
@@ -36,11 +43,11 @@ $(document).ready(function() {
         }
     });
 
-    
     function displayPersonnel() {
-        const mainContainer = $('#main-container');
+        const ungradedTiles = $('#ungraded-tiles');
+        ungradedTiles.empty();
         personnel.forEach((person, index) => {
-            mainContainer.append(createPersonnelTile(person));
+            ungradedTiles.append(createPersonnelTile(person));
         });
         initializeDragAndDrop();
     }
@@ -238,7 +245,7 @@ $(document).ready(function() {
         const fragment = document.createDocumentFragment();
         let currentRow;
         let tileCount = 0;
-
+    
         function addTile(tile) {
             if (tileCount % 4 === 0) {
                 currentRow = document.createElement('div');
@@ -248,26 +255,33 @@ $(document).ready(function() {
             currentRow.appendChild(tile);
             tileCount++;
         }
-
+    
+        // Create and add tier tiles
         tiers.forEach(tier => {
             const tierTile = createTierTile(tier);
             addTile(tierTile);
-
+    
             const tierPersonnel = personnel.filter(p => p.Tier === tier);
             tierPersonnel.forEach(person => {
                 const personTile = createPersonnelTile(person)[0];
                 addTile(personTile);
             });
         });
-
+    
+        // Clear main container except for the ungraded container
+        mainContainer.children().not('#ungraded-container').remove();
+    
+        // Append the new tier structure
+        mainContainer.prepend(fragment);
+    
+        // Update ungraded tiles
         const unassignedPersonnel = personnel.filter(p => !p.Tier);
+        const ungradedTiles = $('#ungraded-tiles');
+        ungradedTiles.empty();
         unassignedPersonnel.forEach(person => {
-            const personTile = createPersonnelTile(person)[0];
-            addTile(personTile);
+            ungradedTiles.append(createPersonnelTile(person));
         });
-
-        mainContainer.empty().append(fragment);
-
+    
         updateTierQuotas();
         filterPersonnel();
     }
