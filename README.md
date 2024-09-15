@@ -1,4 +1,7 @@
 # SAF Ranking Grader
 
-## Link: https://tayhaowen.github.io/Grading-Ranking/
+### Link to website: https://tayhaowen.github.io/Grading-Ranking/
+### Link to Github Repo: https://github.com/tayhaowen/Grading-Ranking
+
+#### Credits: TAY HAO WEN
  
