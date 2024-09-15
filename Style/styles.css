@@ -37,7 +37,7 @@ h1 {
     background-color: #2980b9;
 }
 
-#rank-toggles {
+#rank-tabs {
     display: flex;
     flex-wrap: wrap;
     gap: 10px;
@@ -45,7 +45,7 @@ h1 {
     justify-content: center;
 }
 
-.rank-toggle {
+.rank-tab {
     background-color: #ecf0f1;
     border: none;
     padding: 8px 16px;
@@ -55,7 +55,7 @@ h1 {
     transition: all 0.3s ease;
 }
 
-.rank-toggle.active {
+.rank-tab.active {
     background-color: #2ecc71;
     color: white;
 }

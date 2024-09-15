@@ -1,7 +1,10 @@
 $(document).ready(function() {
     const tiers = ['A', 'B+', 'B', 'C+', 'C', 'C-'];
-    const tierQuotas = {A: 2, 'B+': 5, B: 5, 'C+': 5, C: 5, 'C-': 5};
+    const tierQuotasByRank = {
+        Default: {A: 2, 'B+': 5, B: 5, 'C+': 5, C: 5, 'C-': 5}
+    };
     let personnel = [];
+    let currentRank = 'All Ranks';
 
     function initializeTiers() {
         const mainContainer = $('#main-container');
@@ -9,11 +12,10 @@ $(document).ready(function() {
             mainContainer.append(`
                 <div class="tier-tile" data-tier="${tier}">
                     <h3>${tier}</h3>
-                    <p>(<span class="quota">0</span>/${tierQuotas[tier]})</p>
+                    <p>(<span class="quota">0</span>/<span class="total-quota">0</span>)</p>
                 </div>
             `);
         });
-        // Add ungraded container with a unique ID
         mainContainer.append(`
             <div id="ungraded-container">
                 <h3>Not Graded Yet</h3>
@@ -37,7 +39,7 @@ $(document).ready(function() {
                 const sheet = workbook.Sheets[sheetName];
                 personnel = XLSX.utils.sheet_to_json(sheet);
                 displayPersonnel();
-                initializeRankToggles();
+                initializeRankTabs();
             };
             reader.readAsArrayBuffer(file);
         }
@@ -50,6 +52,7 @@ $(document).ready(function() {
             ungradedTiles.append(createPersonnelTile(person));
         });
         initializeDragAndDrop();
+        updateTierQuotas();
     }
     
     function createPersonnelTile(person) {
@@ -93,18 +96,26 @@ $(document).ready(function() {
         `);
     }
 
-    function initializeRankToggles() {
-        const ranks = [...new Set(personnel.map(p => getProperty(p, 'RANK AS')))];
-        const toggles = $('#rank-toggles');
+    function initializeRankTabs() {
+        const ranks = ['All Ranks', ...new Set(personnel.map(p => getProperty(p, 'RANK AS')))];
+        const toggles = $('#rank-tabs');
         toggles.empty();
+        
         ranks.forEach(rank => {
-            toggles.append(`<button class="rank-toggle" data-rank="${rank}">${rank}</button>`);
+            const count = rank === 'All Ranks' ? personnel.length : personnel.filter(p => getProperty(p, 'RANK AS') === rank).length;
+            toggles.append(`<button class="rank-tab" data-rank="${rank}">${rank} (${count})</button>`);
         });
-    
-        $('.rank-toggle').click(function() {
-            $(this).toggleClass('active');
+        
+        $('.rank-tab').click(function() {
+            $('.rank-tab').removeClass('active');
+            $(this).addClass('active');
+            currentRank = $(this).data('rank');
             filterPersonnel();
+            updateTierQuotas();
         });
+        
+        // Activate "All Ranks" tab by default
+        $('.rank-tab[data-rank="All Ranks"]').addClass('active');
     }
 
     function fuzzyMatch(str, pattern) {
@@ -118,34 +129,27 @@ $(document).ready(function() {
     }
 
     function filterPersonnel() {
-        const activeRanks = $('.rank-toggle.active').map(function() {
-            return $(this).data('rank');
-        }).get();
-    
-        $('.personnel-tile').each(function() {
-            const index = $(this).data('index');
-            $(this).toggle(activeRanks.length === 0 || activeRanks.includes(getProperty(personnel[index], 'RANK AS')));
-        });
+        currentRank = $('.rank-tab.active').data('rank');
+        rearrangeTiles();
     }
 
     function initializeDragAndDrop() {
         let draggedElement = null;
         let dragOffsetX, dragOffsetY;
-        let originalWidth, originalHeight; // Store original dimensions
+        let originalWidth, originalHeight;
         let placeholder = null;
-    
+        
         $('#main-container').on('mousedown', '.personnel-tile', function(e) {
-            $('.placeholder').remove(); // Remove any existing placeholders
-    
+            $('.placeholder').remove();
+            
             draggedElement = this;
             const rect = draggedElement.getBoundingClientRect();
             dragOffsetX = e.clientX - rect.left;
             dragOffsetY = e.clientY - rect.top;
-    
-            // Store original dimensions
+            
             originalWidth = $(draggedElement).outerWidth();
             originalHeight = $(draggedElement).outerHeight();
-    
+            
             placeholder = $('<div>')
                 .addClass('placeholder')
                 .css({
@@ -162,12 +166,12 @@ $(document).ready(function() {
                 width: originalWidth,
                 height: originalHeight
             });
-    
+            
             $(document).on('mousemove.drag', onMouseMove);
             $(document).on('mouseup.drag', onMouseUp);
             e.preventDefault();
         });
-    
+        
         function onMouseMove(e) {
             if (!draggedElement) return;
             
@@ -178,19 +182,21 @@ $(document).ready(function() {
                 });
             });
         }
-    
+        
         function onMouseUp(e) {
             if (!draggedElement) return;
-    
+            
             const droppedOn = document.elementFromPoint(e.clientX, e.clientY);
             const tierTile = $(droppedOn).closest('.tier-tile');
-    
+            const ungradedContainer = $(droppedOn).closest('#ungraded-container');
+            
+            const personIndex = $(draggedElement).data('index');
+            
             if (tierTile.length) {
                 const tier = tierTile.data('tier');
-                const personIndex = $(draggedElement).data('index');
                 personnel[personIndex].Tier = tier;
-                updateTierQuotas();
-                rearrangeTiles();
+            } else if (ungradedContainer.length) {
+                delete personnel[personIndex].Tier;
             } else {
                 $(draggedElement).css({
                     position: '',
@@ -200,25 +206,27 @@ $(document).ready(function() {
                 });
                 $(draggedElement).insertAfter(placeholder);
             }
-    
-            // Reset dimensions to original
+            
             $(draggedElement).css({
                 width: originalWidth,
                 height: originalHeight
             });
-    
+            
             if (placeholder) {
                 placeholder.remove();
                 placeholder = null;
             }
-    
+            
             $(draggedElement).removeClass('dragging');
             draggedElement = null;
-    
+            
             $(document).off('.drag');
+            
+            updateTierQuotas();
+            rearrangeTiles();
         }
-    
-        $('.tier-tile').droppable({
+        
+        $('.tier-tile, #ungraded-container').droppable({
             accept: '.personnel-tile',
             over: function(event, ui) {
                 $(this).addClass('tier-hover');
@@ -233,10 +241,15 @@ $(document).ready(function() {
     }
 
     function updateTierQuotas() {
+        const quotas = tierQuotasByRank['Default'];
+        const filteredPersonnel = currentRank === 'All Ranks' ? personnel : personnel.filter(p => getProperty(p, 'RANK AS') === currentRank);
+        
         tiers.forEach(tier => {
-            const count = personnel.filter(p => p.Tier === tier).length;
+            const count = filteredPersonnel.filter(p => p.Tier === tier).length;
+            const tierQuota = quotas[tier];
             $(`.tier-tile[data-tier="${tier}"] .quota`).text(count);
-            $(`.tier-tile[data-tier="${tier}"]`).toggleClass('exceeded', count > tierQuotas[tier]);
+            $(`.tier-tile[data-tier="${tier}"] .total-quota`).text(tierQuota);
+            $(`.tier-tile[data-tier="${tier}"]`).toggleClass('exceeded', count > tierQuota);
         });
     }
 
@@ -245,7 +258,7 @@ $(document).ready(function() {
         const fragment = document.createDocumentFragment();
         let currentRow;
         let tileCount = 0;
-    
+        
         function addTile(tile) {
             if (tileCount % 4 === 0) {
                 currentRow = document.createElement('div');
@@ -255,35 +268,39 @@ $(document).ready(function() {
             currentRow.appendChild(tile);
             tileCount++;
         }
-    
+        
         // Create and add tier tiles
         tiers.forEach(tier => {
             const tierTile = createTierTile(tier);
             addTile(tierTile);
-    
-            const tierPersonnel = personnel.filter(p => p.Tier === tier);
+            
+            const tierPersonnel = currentRank === 'All Ranks' 
+                ? personnel.filter(p => p.Tier === tier)
+                : personnel.filter(p => p.Tier === tier && getProperty(p, 'RANK AS') === currentRank);
+            
             tierPersonnel.forEach(person => {
                 const personTile = createPersonnelTile(person)[0];
                 addTile(personTile);
             });
         });
-    
+        
         // Clear main container except for the ungraded container
         mainContainer.children().not('#ungraded-container').remove();
-    
+        
         // Append the new tier structure
         mainContainer.prepend(fragment);
-    
+        
         // Update ungraded tiles
-        const unassignedPersonnel = personnel.filter(p => !p.Tier);
+        const unassignedPersonnel = currentRank === 'All Ranks'
+            ? personnel.filter(p => !p.Tier)
+            : personnel.filter(p => !p.Tier && getProperty(p, 'RANK AS') === currentRank);
         const ungradedTiles = $('#ungraded-tiles');
         ungradedTiles.empty();
         unassignedPersonnel.forEach(person => {
             ungradedTiles.append(createPersonnelTile(person));
         });
-    
+        
         updateTierQuotas();
-        filterPersonnel();
     }
 
     function createTierTile(tier) {
@@ -292,11 +309,10 @@ $(document).ready(function() {
         tierTile.dataset.tier = tier;
         tierTile.innerHTML = `
             <h3>${tier}</h3>
-            <p>(<span class="quota">0</span>/${tierQuotas[tier]})</p>
+            <p>(<span class="quota">0</span>/<span class="total-quota">0</span>)</p>
         `;
         return tierTile;
     }
-
     
 
     initializeTiers();
