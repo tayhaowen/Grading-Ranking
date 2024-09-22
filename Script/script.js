@@ -138,8 +138,11 @@ $(document).ready(function() {
         let dragOffsetX, dragOffsetY;
         let originalWidth, originalHeight;
         let placeholder = null;
+        let lastUpdateTime = 0;
+        const updateInterval = 16; // ~60fps
         
         $('#main-container').on('mousedown', '.personnel-tile', function(e) {
+            // Remove any existing placeholders before starting a new drag
             $('.placeholder').remove();
             
             draggedElement = this;
@@ -175,44 +178,44 @@ $(document).ready(function() {
         function onMouseMove(e) {
             if (!draggedElement) return;
             
+            const currentTime = Date.now();
+            if (currentTime - lastUpdateTime < updateInterval) return;
+            
+            lastUpdateTime = currentTime;
+            
             requestAnimationFrame(() => {
                 $(draggedElement).css({
                     left: e.clientX - dragOffsetX,
                     top: e.clientY - dragOffsetY
                 });
+                
+                updatePlaceholderPosition(e.clientX, e.clientY);
             });
         }
         
         function onMouseUp(e) {
             if (!draggedElement) return;
             
-            const droppedOn = document.elementFromPoint(e.clientX, e.clientY);
-            const tierTile = $(droppedOn).closest('.tier-tile');
-            const ungradedContainer = $(droppedOn).closest('#ungraded-container');
-            
             const personIndex = $(draggedElement).data('index');
+            const newTier = determineNewTier(e.clientX, e.clientY);
             
-            if (tierTile.length) {
-                const tier = tierTile.data('tier');
-                personnel[personIndex].Tier = tier;
-            } else if (ungradedContainer.length) {
+            if (newTier === 'Not Graded Yet') {
                 delete personnel[personIndex].Tier;
-            } else {
-                $(draggedElement).css({
-                    position: '',
-                    left: '',
-                    top: '',
-                    zIndex: ''
-                });
-                $(draggedElement).insertAfter(placeholder);
+            } else if (newTier) {
+                personnel[personIndex].Tier = newTier;
             }
             
             $(draggedElement).css({
+                position: '',
+                left: '',
+                top: '',
+                zIndex: '',
                 width: originalWidth,
                 height: originalHeight
             });
             
             if (placeholder) {
+                $(draggedElement).insertAfter(placeholder);
                 placeholder.remove();
                 placeholder = null;
             }
@@ -222,22 +225,65 @@ $(document).ready(function() {
             
             $(document).off('.drag');
             
+            $('.placeholder').remove();
+            
             updateTierQuotas();
             rearrangeTiles();
         }
         
-        $('.tier-tile, #ungraded-container').droppable({
-            accept: '.personnel-tile',
-            over: function(event, ui) {
-                $(this).addClass('tier-hover');
-            },
-            out: function(event, ui) {
-                $(this).removeClass('tier-hover');
-            },
-            drop: function(event, ui) {
-                $(this).removeClass('tier-hover');
+        function updatePlaceholderPosition(x, y) {
+            const elemBelow = document.elementFromPoint(x, y);
+            const tileBelow = $(elemBelow).closest('.personnel-tile, .tier-tile');
+            
+            if (tileBelow.length && !tileBelow.is(draggedElement)) {
+                if (tileBelow.hasClass('personnel-tile')) {
+                    placeholder.insertAfter(tileBelow);
+                } else {
+                    const rect = tileBelow[0].getBoundingClientRect();
+                    const isAfter = y - rect.top > rect.height / 2;
+                    
+                    if (isAfter) {
+                        placeholder.insertAfter(tileBelow);
+                    } else {
+                        placeholder.insertBefore(tileBelow);
+                    }
+                }
             }
-        });
+        }
+        
+        function determineNewTier(x, y) {
+            const elemBelow = document.elementFromPoint(x, y);
+            const tileBelow = $(elemBelow).closest('.personnel-tile, .tier-tile, #ungraded-container');
+            
+            if (tileBelow.hasClass('tier-tile')) {
+                return tileBelow.data('tier');
+            } else if (tileBelow.is('#ungraded-container')) {
+                return 'Not Graded Yet';
+            } else if (tileBelow.hasClass('personnel-tile')) {
+                const tileTier = personnel[tileBelow.data('index')].Tier;
+                return tileTier || 'Not Graded Yet';
+            } else {
+                const nearestTier = findNearestTier(x, y);
+                return nearestTier ? nearestTier.data('tier') : null;
+            }
+        }
+        
+        function findNearestTier(x, y) {
+            let nearestTier = null;
+            let minDistance = Infinity;
+            
+            $('.tier-tile').each(function() {
+                const rect = this.getBoundingClientRect();
+                const distance = Math.hypot(x - (rect.left + rect.width / 2), y - (rect.top + rect.height / 2));
+                
+                if (distance < minDistance) {
+                    minDistance = distance;
+                    nearestTier = $(this);
+                }
+            });
+            
+            return nearestTier;
+        }
     }
 
     function updateTierQuotas() {
@@ -290,17 +336,39 @@ $(document).ready(function() {
         // Append the new tier structure
         mainContainer.prepend(fragment);
         
-        // Update ungraded tiles
+        // Make sure the ungraded container always exists
+        if (!$('#ungraded-container').length) {
+            mainContainer.append(`
+                <div id="ungraded-container">
+                    <h3>Not Graded Yet</h3>
+                    <div id="ungraded-tiles"></div>
+                </div>
+            `);
+        }
+    
+        const ungradedTiles = $('#ungraded-tiles');
+        ungradedTiles.empty();
+    
         const unassignedPersonnel = currentRank === 'All Ranks'
             ? personnel.filter(p => !p.Tier)
             : personnel.filter(p => !p.Tier && getProperty(p, 'RANK AS') === currentRank);
-        const ungradedTiles = $('#ungraded-tiles');
-        ungradedTiles.empty();
-        unassignedPersonnel.forEach(person => {
-            ungradedTiles.append(createPersonnelTile(person));
-        });
-        
+    
+        if (unassignedPersonnel.length === 0) {
+            // Add a message and placeholder div to maintain droppable area
+            ungradedTiles.append(`
+                <div class="ungraded-placeholder">
+                    <p class="drag-drop-message">You can still drag and drop personnel here</p>
+                </div>
+            `);
+        } else {
+            unassignedPersonnel.forEach(person => {
+                ungradedTiles.append(createPersonnelTile(person));
+            });
+        }
+    
         updateTierQuotas();
+        // Remove this line to prevent reinitializing drag and drop unnecessarily
+        // initializeDragAndDrop();
     }
 
     function createTierTile(tier) {
