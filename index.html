@@ -4,19 +4,50 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SAF Personnel Ranking System</title>
+    <link rel="icon" type="image/x-icon" href="favicon/favicon.ico">
     <link rel="stylesheet" href="Style/styles.css">
     <script src="Script/jquery-3.6.0.min.js"></script>
     <script src="Script/jquery-ui.min.js"></script>
+    <link rel="stylesheet" href="Style/bootstrap-icons.css">
 </head>
 <body>
+    <div class="hamburger-menu">
+        <i class="bi bi-list"></i>
+    </div>
+    
+    <div class="side-panel">
+        <h2>Tools</h2>
+        <div class="tool">
+            <div id="file-upload">
+                <button id="upload-btn">Upload Data (.xlsx, .xls)</button>
+                <input type="file" id="excel-upload" accept=".xlsx, .xls" style="display: none;">
+            </div>
+            
+            <button id="save-progress" class="action-button save-button">
+                <i class="fas fa-save"></i> Save Progress (.JSON)
+            </button>
+            <button id="load-progress" class="action-button load-button">
+                <i class="fas fa-folder-open"></i> Load Progress (.JSON)
+            </button>
+            
+            <h3 class="tool-header">
+                Credit
+                <span class="toggle-tool"><i class="bi bi-chevron-down"></i></span>
+            </h3>
+            <div class="tool-content">
+                <h4>Unit: MTI</h4>
+                <h4>Developer: LCP Tay Hao Wen</h4>
+                <h4>Requestor: DX10S Muhd Syafiq</h4>      
+            </div>
+        </div>
+        <!-- More tools can be added here -->
+    </div>
+
+    <div class="overlay"></div>
+
     <div id="ranking-system">
         <h1>Ranking Grader</h1>
         
-        <div id="file-upload">
-            <button id="upload-btn">Upload Data (.xlsx, .xls)</button>
-            <input type="file" id="excel-upload" accept=".xlsx, .xls" style="display: none;">
-        </div>
-
         <div id="rank-tabs">
             <!-- Rank toggle buttons will be dynamically added here -->
         </div>

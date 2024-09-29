@@ -6,6 +6,36 @@ $(document).ready(function() {
     let personnel = [];
     let currentRank = 'All Ranks';
 
+    // Hamburger menu functionality
+    $('.hamburger-menu').click(function() {
+        $('.side-panel').toggleClass('open');
+        $('.overlay').toggleClass('active');
+    });
+
+    $('.overlay').click(function() {
+        $('.side-panel').removeClass('open');
+        $('.overlay').removeClass('active');
+        // $('#ranking-system').removeClass('panel-open');
+    });
+
+    // Close panel when clicking outside
+    $(document).click(function(event) {
+        if (!$(event.target).closest('.side-panel, .hamburger-menu').length) {
+            $('.side-panel').removeClass('open');
+            $('#ranking-system').removeClass('panel-open');
+        }
+    });
+
+    // Prevent panel from closing when clicking inside it
+    $('.side-panel').click(function(event) {
+        event.stopPropagation();
+    });
+
+    $('.tool-header').click(function() {
+        $(this).find('.toggle-tool i').toggleClass('bi-chevron-down bi-chevron-up');
+        $(this).next('.tool-content').slideToggle(300);
+    });
+
     function initializeTiers() {
         const mainContainer = $('#main-container');
         tiers.forEach(tier => {
@@ -48,53 +78,78 @@ $(document).ready(function() {
     function displayPersonnel() {
         const ungradedTiles = $('#ungraded-tiles');
         ungradedTiles.empty();
+        
+        // Clear existing tier tiles
+        $('.tier-tile').find('.personnel-tile').remove();
+        
         personnel.forEach((person, index) => {
-            ungradedTiles.append(createPersonnelTile(person));
+          const tile = createPersonnelTile(person);
+          if (person.Tier) {
+            $(`.tier-tile[data-tier="${person.Tier}"]`).append(tile);
+          } else {
+            ungradedTiles.append(tile);
+          }
         });
+        
         initializeDragAndDrop();
         updateTierQuotas();
-    }
+      }
     
     function createPersonnelTile(person) {
         function getProperty(obj, key) {
             const fuzzyKey = Object.keys(obj).find(k => fuzzyMatch(k, key));
             return obj[fuzzyKey] || 'N/A';
         }
-    
+        
+        const nric = getProperty(person, 'NRIC');
+        const imageUrl = getPersonnelImageUrl(nric);
+        
         return $(`
         <div class="personnel-tile" data-index="${personnel.indexOf(person)}">
-        <h4>${getProperty(person, 'RANK')} ${getProperty(person, 'NAME')}</h4>
-        <div class="info-grid">
-        <div class="info-item"><strong>Sub-unit:</strong> ${getProperty(person, 'SUBUNIT')}</div>
-        <div class="info-item"><strong>Vocation:</strong> ${getProperty(person, 'VOC')}</div>
-        <div class="info-item"><strong>Years in Rank:</strong> ${getProperty(person, 'YIR')}</div>
-        <div class="info-item"><strong>Promo Count:</strong> ${getProperty(person, 'PROMO COUNT')}</div>
-        <div class="info-item"><strong>IPPT:</strong> ${getProperty(person, 'IPPT AWARD')}</div>
-        <div class="info-item"><strong>BMI:</strong> ${getProperty(person, 'BMI')}</div>
-        <div class="info-item"><strong>Marksman:</strong> ${getProperty(person, 'Marksman')}</div>
-        <div class="info-item"><strong>Offence:</strong> ${getProperty(person, 'Offence')}</div>
-        </div>
-        <div class="performance-indicators">
-        <div class="indicator">
-        <div class="indicator-value">${getProperty(person, 'PRG 23')}</div>
-        <div>PRG23</div>
-        </div>
-        <div class="indicator">
-        <div class="indicator-value">${getProperty(person, 'CEP 23')}</div>
-        <div>CEP23</div>
-        </div>
-        <div class="indicator">
-        <div class="indicator-value">${getProperty(person, 'PRG 24')}</div>
-        <div>PRG24</div>
-        </div>
-        <div class="indicator">
-        <div class="indicator-value">${getProperty(person, 'CEP 24')}</div>
-        <div>CEP24</div>
-        </div>
-        </div>
+            <div class="personnel-image">
+                <img src="${imageUrl}" alt="${getProperty(person, 'NAME')}" onerror="this.src='default-image.jpg';">
+            </div>
+            <h4>${getProperty(person, 'RANK')} ${getProperty(person, 'NAME')}</h4>
+            <div class="info-grid">
+                <div class="info-item"><strong>Sub-unit:</strong> ${getProperty(person, 'SUBUNIT')}</div>
+                <div class="info-item"><strong>Vocation:</strong> ${getProperty(person, 'VOC')}</div>
+                <div class="info-item"><strong>Years in Rank:</strong> ${getProperty(person, 'YIR')}</div>
+                <div class="info-item"><strong>Promo Count:</strong> ${getProperty(person, 'PROMO COUNT')}</div>
+                <div class="info-item"><strong>IPPT:</strong> ${getProperty(person, 'IPPT AWARD')}</div>
+                <div class="info-item"><strong>BMI:</strong> ${getProperty(person, 'BMI')}</div>
+                <div class="info-item"><strong>Marksman:</strong> ${getProperty(person, 'Marksman')}</div>
+                <div class="info-item"><strong>Offence:</strong> ${getProperty(person, 'Offence')}</div>
+            </div>
+            <div class="performance-indicators">
+                <div class="indicator">
+                    <div class="indicator-value">${getProperty(person, 'PRG 23')}</div>
+                    <div>PRG23</div>
+                </div>
+                <div class="indicator">
+                    <div class="indicator-value">${getProperty(person, 'CEP 23')}</div>
+                    <div>CEP23</div>
+                </div>
+                <div class="indicator">
+                    <div class="indicator-value">${getProperty(person, 'PRG 24')}</div>
+                    <div>PRG24</div>
+                </div>
+                <div class="indicator">
+                    <div class="indicator-value">${getProperty(person, 'CEP 24')}</div>
+                    <div>CEP24</div>
+                </div>
+            </div>
         </div>
         `);
     }
+
+    function getPersonnelImageUrl(nric) {
+        const imageFormats = ['jpg', 'jpeg', 'png'];
+        for (const format of imageFormats) {
+            return `personnel image/${nric}.${format}`;
+        }
+        return 'default-image.jpg';
+    }
+    
 
     function initializeRankTabs() {
         const ranks = ['All Ranks', ...new Set(personnel.map(p => getProperty(p, 'RANK AS')))];
@@ -381,6 +436,82 @@ $(document).ready(function() {
         `;
         return tierTile;
     }
+
+    async function getSavedFolder() {
+        const dirHandle = await window.showDirectoryPicker({
+            startIn: 'documents',
+            mode: 'readwrite'
+        });
+        
+        try {
+            return await dirHandle.getDirectoryHandle('saved', { create: true });
+        } catch (err) {
+            console.error('Error creating "saved" folder:', err);
+            return null;
+        }
+    }
+
+    function saveProgress() {
+        const dataToSave = {
+            personnel: personnel,
+            currentRank: currentRank
+        };
+        
+        const blob = new Blob([JSON.stringify(dataToSave)], {type: 'application/json'});
+        const url = URL.createObjectURL(blob);
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const fileName = `save_${timestamp}.json`;
+        
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        
+        //alert('Progress saved successfully! Please move the downloaded file to the "saved" folder in your project directory.');
+    }
+    
+    function loadProgress() {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.json';
+        
+        input.onchange = e => {
+            const file = e.target.files[0];
+            const reader = new FileReader();
+            reader.onload = readerEvent => {
+                try {
+                    const content = readerEvent.target.result;
+                    const savedData = JSON.parse(content);
+                    
+                    personnel = savedData.personnel;
+                    currentRank = savedData.currentRank;
+                    
+                    // Update UI
+                    displayPersonnel();
+                    initializeRankTabs();
+                    filterPersonnel();
+                    updateTierQuotas();
+                    
+                    // Set the correct rank tab as active
+                    $(`.rank-tab[data-rank="${currentRank}"]`).addClass('active').siblings().removeClass('active');
+                    
+                    //alert('Progress loaded successfully!');
+                } catch (err) {
+                    console.error('Error parsing file:', err);
+                    alert('Error loading file. Please make sure it\'s a valid JSON file.');
+                }
+            }
+            reader.readAsText(file,'UTF-8');
+        }
+        
+        input.click();
+    }
+
+    $('#save-progress').click(saveProgress);
+    $('#load-progress').click(loadProgress);
     
 
     initializeTiers();
