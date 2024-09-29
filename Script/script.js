@@ -452,15 +452,27 @@ $(document).ready(function() {
     }
 
     function saveProgress() {
-        const dataToSave = {
-            personnel: personnel,
-            currentRank: currentRank
-        };
-        
-        const blob = new Blob([JSON.stringify(dataToSave)], {type: 'application/json'});
+        // Create a new workbook
+        const wb = XLSX.utils.book_new();
+    
+        // Convert personnel data to worksheet
+        const ws_personnel = XLSX.utils.json_to_sheet(personnel);
+        XLSX.utils.book_append_sheet(wb, ws_personnel, "Personnel Data");
+    
+        // Create a worksheet for currentRank
+        const ws_rank = XLSX.utils.json_to_sheet([{CurrentRank: currentRank}]);
+        XLSX.utils.book_append_sheet(wb, ws_rank, "Current Rank");
+    
+        // Generate Excel file
+        const wbout = XLSX.write(wb, {bookType:'xlsx', type:'binary'});
+    
+        // Convert to Blob
+        const blob = new Blob([s2ab(wbout)], {type: "application/octet-stream"});
+    
+        // Create download link
         const url = URL.createObjectURL(blob);
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-        const fileName = `save_${timestamp}.json`;
+        const fileName = `save_${timestamp}.xlsx`;
         
         const a = document.createElement('a');
         a.href = url;
@@ -470,25 +482,58 @@ $(document).ready(function() {
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
         
-        //alert('Progress saved successfully! Please move the downloaded file to the "saved" folder in your project directory.');
+        $('#save-progress').addClass('saving');
+        setTimeout(() => {
+            $('#save-progress').removeClass('saving');
+        }, 1000);
+    
+        //alert('Progress saved successfully! Please move the downloaded Excel file to the "saved" folder in your project directory.');
+    }
+    
+    // Helper function to convert string to ArrayBuffer
+    function s2ab(s) {
+        const buf = new ArrayBuffer(s.length);
+        const view = new Uint8Array(buf);
+        for (let i=0; i<s.length; i++) view[i] = s.charCodeAt(i) & 0xFF;
+        return buf;
     }
     
     function loadProgress() {
         const input = document.createElement('input');
         input.type = 'file';
-        input.accept = '.json';
+        input.accept = '.xlsx';
         
         input.onchange = e => {
+            $('#load-progress').addClass('loading');
             const file = e.target.files[0];
             const reader = new FileReader();
-            reader.onload = readerEvent => {
+            reader.onload = function(e) {
                 try {
-                    const content = readerEvent.target.result;
-                    const savedData = JSON.parse(content);
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, {type: 'array'});
                     
-                    personnel = savedData.personnel;
-                    currentRank = savedData.currentRank;
-                    
+                    // Read personnel data
+                    const personnelSheetName = workbook.SheetNames.find(name => name.toLowerCase().includes('personnel'));
+                    if (!personnelSheetName) {
+                        throw new Error("Personnel sheet not found in the Excel file.");
+                    }
+                    const personnelSheet = workbook.Sheets[personnelSheetName];
+                    personnel = XLSX.utils.sheet_to_json(personnelSheet);
+    
+                    // Read currentRank
+                    const rankSheetName = workbook.SheetNames.find(name => name.toLowerCase().includes('rank'));
+                    if (rankSheetName) {
+                        const rankSheet = workbook.Sheets[rankSheetName];
+                        const rankData = XLSX.utils.sheet_to_json(rankSheet);
+                        if (rankData.length > 0 && rankData[0].hasOwnProperty('CurrentRank')) {
+                            currentRank = rankData[0].CurrentRank;
+                        } else {
+                            currentRank = 'All Ranks'; // Default to 'All Ranks' if not found
+                        }
+                    } else {
+                        currentRank = 'All Ranks'; // Default to 'All Ranks' if rank sheet not found
+                    }
+    
                     // Update UI
                     displayPersonnel();
                     initializeRankTabs();
@@ -501,10 +546,12 @@ $(document).ready(function() {
                     //alert('Progress loaded successfully!');
                 } catch (err) {
                     console.error('Error parsing file:', err);
-                    alert('Error loading file. Please make sure it\'s a valid JSON file.');
+                    alert('Error loading file: ' + err.message);
+                } finally {
+                    $('#load-progress').removeClass('loading');
                 }
-            }
-            reader.readAsText(file,'UTF-8');
+            };
+            reader.readAsArrayBuffer(file);
         }
         
         input.click();
