@@ -24,7 +24,7 @@ No installation is required. The application runs directly in the web browser.
 
 ## Usage
 1. Open `index.html` in a web browser.
-2. Save peronnel images in the 'personnel image' folder.
+2. Save peronnel images in the 'personnel image' folder and rename them to their respective NRIC (e.g. S1234567A.jpg).
 3. Click the "Upload Data" button to upload a nominal roll in .xlsx format.
 4. Use the drag-and-drop interface to rank personnel into different tiers.
 5. Save your progress using the "Save Progress" button.
