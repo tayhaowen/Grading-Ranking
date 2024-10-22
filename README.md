@@ -39,8 +39,8 @@ This application is intended for use on secure networks. Ensure all necessary se
 As this is an internal SAF tool, contributions are limited to authorized personnel. Please contact the project maintainers for more information.
 
 ## Credits
-- Unit: MTI
-- Developer: LCP Tay Hao Wen
+- Unit: MTI (Motorised Infantry Training Institute)
+- Developer: Tay Hao Wen
 - Requestor: DX10S Muhd Syafiq
 
 ## License
